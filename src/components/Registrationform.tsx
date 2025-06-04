@@ -97,7 +97,7 @@ const RegistrationForm = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
   
   if (validateForm()) {
@@ -113,7 +113,8 @@ const RegistrationForm = () => {
       });
 
       if (!response.ok) {
-        throw new Error('Registration failed');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Registration failed');
       }
 
       const data = await response.json();
@@ -126,10 +127,10 @@ const RegistrationForm = () => {
         setIsSubmitted(false);
         setBranchOptions([]);
       }, 5000);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error:', error);
       setIsSubmitting(false);
-      alert('Registration failed. Please try again.');
+      alert(`Registration failed: ${error.message || 'Please try again later'}`);
     }
   }
 };
@@ -181,7 +182,7 @@ const RegistrationForm = () => {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
@@ -342,7 +343,7 @@ const RegistrationForm = () => {
                   
                   <div className="mt-6">
                     <button
-                      onClick={handleSubmit}
+                      type="submit"
                       disabled={isSubmitting}
                       className={`w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center transition-colors duration-300 ${
                         isSubmitting ? 'opacity-70 cursor-not-allowed' : ''
@@ -364,7 +365,7 @@ const RegistrationForm = () => {
                       )}
                     </button>
                   </div>
-                </div>
+                </form>
               )}
             </div>
           </div>

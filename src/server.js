@@ -1,57 +1,62 @@
-const mongoose = require('mongoose');
+const admin = require('firebase-admin');
+const serviceAccount = require('./beach.json');
+const express = require('express');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
-const express = require('express');
-require('dotenv').config(); 
+require('dotenv').config();
+const path = require('path');
+
+
+
+
+
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+  databaseURL: `https://${serviceAccount.project_id}.firebaseio.com` // Add this line
+});
+
+const db = admin.firestore();
+db.settings({ 
+  ignoreUndefinedProperties: true // Prevents undefined fields from causing errors
+});
+db.collection('test').doc('connection').set({ test: true })
+  .then(() => console.log('Firestore connection successful'))
+  .catch(err => console.error('Firestore connection failed:', err));
 const app = express();
-
-
+const PORT = process.env.PORT || 5000;
+app.use(express.json()); // For parsing application/json
+app.use(express.urlencoded({ extended: true })); // For parsing form data
 // Middleware
-app.use(cors());
-app.use(express.json());
-// MongoDB Connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/beachCleanupDB')
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('MongoDB connection error:', err));
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://your-frontend-domain.com'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
 // Nodemailer setup
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: process.env.EMAIL_USERNAME,
-    pass: process.env.EMAIL_PASSWORD
+    pass: process.env.EMAIL_PASSWORD,
   }
 });
 
-// Verify connection configuration
-transporter.verify(function(error, success) {
+// Verify email transporter connection
+transporter.verify((error, success) => {
   if (error) {
-    console.error('Error with mail transporter:', error);
+    console.error('❌ Email transporter error:', error);
   } else {
-    console.log('Server is ready to send emails');
+    console.log('✅ Mail transporter is ready');
   }
 });
-// Start server
-const PORT = process.env.PORT || 5000;
-
-// Define Registration Schema
-const registrationSchema = new mongoose.Schema({
-  name: String,
-  email: String,
-  phone: { type: String },
-  rollNo: String,
-  emergencyContact: String,
-  emergencyPhone: { type: String },
-  year: String,
-  branch: String,
-  registrationDate: { type: Date, default: Date.now }
-});
-const Registration = mongoose.model('Registration', registrationSchema);
 
 // Function to send confirmation email
 const sendConfirmationEmail = async (registration) => {
   try {
     const mailOptions = {
-      from: process.env.EMAIL_USERNAME || 'your-email@gmail.com',
+      from: process.env.EMAIL_USERNAME,
       to: registration.email,
       subject: 'Registration Confirmation - Beach Cleanup 2025',
       html: `
@@ -59,64 +64,77 @@ const sendConfirmationEmail = async (registration) => {
           <h2 style="color: #059669;">Thank you for registering!</h2>
           <p>Dear ${registration.name},</p>
           <p>Your registration for Beach Cleanup 2025 has been successfully received.</p>
-          
           <h3 style="color: #059669; margin-top: 20px;">Event Details</h3>
           <ul>
             <li><strong>Date:</strong> July, 2025</li>
             <li><strong>Location:</strong> Girgaon Chowpatty</li>
             <li><strong>Time:</strong> 7:30 am to 9:30 am</li>
           </ul>
-          
           <h3 style="color: #059669; margin-top: 20px;">Your Registration Details</h3>
           <ul>
             <li><strong>Name:</strong> ${registration.name}</li>
-            <li><strong>Roll No:</strong> ${registration.rollNo}</li>
-            <li><strong>Year:</strong> ${registration.year}</li>
-            <li><strong>Branch:</strong> ${registration.branch}</li>
+            <li><strong>Roll No:</strong> ${registration.rollNo || 'N/A'}</li>
+            <li><strong>Year:</strong> ${registration.year || 'N/A'}</li>
+            <li><strong>Branch:</strong> ${registration.branch || 'N/A'}</li>
           </ul>
           <p style="margin-top: 20px;">
-  Join our <a href="https://chat.whatsapp.com/your-invite-link" target="_blank" style="color: #059669; text-decoration: none;">WhatsApp community</a> to receive live updates and important announcements about the event.
-</p>
-          <p style="margin-top: 20px;">Please bring your college ID card on the event day.</p>
-          <p>If you have any questions, please reply to this email.</p>
-          
+            Join our <a href="https://chat.whatsapp.com/your-invite-link" target="_blank" style="color: #059669;">WhatsApp community</a> for updates.
+          </p>
+          <p>Please bring your college ID card on the event day.</p>
+          <p>If you have any questions, just reply to this email.</p>
           <p style="margin-top: 30px;">Best regards,<br>Beach Cleanup Organizing Team</p>
         </div>
       `
     };
 
     await transporter.sendMail(mailOptions);
-    console.log('Confirmation email sent to:', registration.email);
+    console.log('📧 Confirmation email sent to:', registration.email);
   } catch (error) {
-    console.error('Error sending confirmation email:', error);
+    console.error('❌ Error sending confirmation email:', error);
   }
 };
-console.log('EMAIL_USERNAME:', process.env.EMAIL_USERNAME);
-console.log('EMAIL_PASSWORD:', process.env.EMAIL_PASSWORD);
 
-// API Endpoint to handle registration
+// Health Check Route
+app.get('/', (req, res) => {
+  res.send('🌊 Beach Cleanup 2025 Server is running!');
+});
+
+// Registration API Endpoint using Firebase Firestore
 app.post('/api/register', async (req, res) => {
   try {
-    const newRegistration = new Registration(req.body);
-    await newRegistration.save();
-    
-    console.log('✅ Registration saved:', newRegistration);
+    const { name, email } = req.body;
 
-    sendConfirmationEmail(newRegistration);
-    
-    res.status(201).json({ 
-      message: 'Registration successful', 
-      data: newRegistration 
+    // Basic validation
+    if (!name || !email) {
+      return res.status(400).json({ message: 'Name and email are required' });
+    }
+
+    const registrationData = {
+      ...req.body,
+      registrationDate: admin.firestore.Timestamp.now()
+    };
+
+    const docRef = await db.collection('registrations').add(registrationData);
+    console.log('✅ Registration saved with ID:', docRef.id);
+
+    // Send confirmation email
+    await sendConfirmationEmail(registrationData);
+
+    res.status(201).json({
+      message: 'Registration successful',
+      id: docRef.id,
+      data: registrationData
     });
   } catch (error) {
-    console.error('❌ Error saving registration:', error);
-    res.status(400).json({ 
-      message: 'Registration failed', 
-      error: error.message 
+    console.error('❌ Registration error:', error);
+    res.status(500).json({
+      message: 'Registration failed',
+      error: error.message
     });
   }
 });
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+
 // Start server
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
