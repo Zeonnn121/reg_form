@@ -1,5 +1,6 @@
 const admin = require('firebase-admin');
-const serviceAccount = require('./beach.json');
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+
 const express = require('express');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
@@ -29,11 +30,15 @@ app.use(express.json()); // For parsing application/json
 app.use(express.urlencoded({ extended: true })); // For parsing form data
 // Middleware
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://your-frontend-domain.com'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  origin: [
+    'http://localhost:3000',
+    'https://reg-form-flax.vercel.app'
+  ],
+  methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }));
+
 // Nodemailer setup
 const transporter = nodemailer.createTransport({
   service: 'gmail',
