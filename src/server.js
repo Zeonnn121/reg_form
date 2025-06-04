@@ -33,6 +33,9 @@ app.use(cors({
   origin: [
     'http://localhost:3000',
     'https://reg-form-flax.vercel.app',
+    'https://reg-form-zeons-projects-e0ee34d7.vercel.app',
+    'https://reg-form-git-main-zeons-projects-e0ee34d7.vercel.app/',
+
     'https://reg-form-1xw5idwgr-zeons-projects-e0ee34d7.vercel.app/'
   ],
   methods: ['GET', 'POST', 'OPTIONS'],
