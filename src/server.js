@@ -32,7 +32,8 @@ app.use(express.urlencoded({ extended: true })); // For parsing form data
 app.use(cors({
   origin: [
     'http://localhost:3000',
-    'https://reg-form-flax.vercel.app'
+    'https://reg-form-flax.vercel.app',
+    'https://reg-form-1xw5idwgr-zeons-projects-e0ee34d7.vercel.app/'
   ],
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],

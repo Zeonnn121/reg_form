@@ -104,7 +104,7 @@ const handleSubmit = async (e: React.FormEvent) => {
     setIsSubmitting(true);
     
     try {
-      const response = await fetch('https://reg-form-tvho.onrender.com', {
+      const response = await fetch('https://reg-form-tvho.onrender.com/api/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
